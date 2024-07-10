@@ -1,5 +1,6 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Thread from 'App/Models/Thread'
+import SortThreadValidator from 'App/Validators/SortThreadValidator'
 import ThreadValidator from 'App/Validators/ThreadValidator'
 
 export default class ThreadsController {
@@ -9,9 +10,15 @@ export default class ThreadsController {
       const perPage = request.input('per_page', 10)
       const userId = request.input('user_id')
       const categoryId = request.input('category_id')
+
+      const sortValidated = await request.validate(SortThreadValidator)
+      const sortBy = sortValidated.sort_by || 'id'
+      const order = sortValidated.order || 'asc'
+
       const threads = await Thread.query()
         .if(userId, (query) => query.where('user_id', userId))
         .if(categoryId, (query) => query.where('category_id', categoryId))
+        .orderBy(sortBy, order)
         .preload('user')
         .preload('category')
         .preload('replies')
