@@ -1,4 +1,5 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
+import UnauthorizedException from 'App/Exceptions/UnauthorizedException'
 import Thread from 'App/Models/Thread'
 import SortThreadValidator from 'App/Validators/SortThreadValidator'
 import ThreadValidator from 'App/Validators/ThreadValidator'
@@ -72,9 +73,7 @@ export default class ThreadsController {
       const user = auth.user
 
       if (user?.id !== thread.userId) {
-        return response.status(401).json({
-          message: 'Unauthorized',
-        })
+        throw new UnauthorizedException('Unauthorized', 403, 'E_UNAUTHORIZED')
       }
 
       const validateData = await request.validate(ThreadValidator)
@@ -87,9 +86,15 @@ export default class ThreadsController {
         data: thread,
       })
     } catch (error) {
-      return response.status(400).json({
-        message: error.message,
-      })
+      if (error.name === 'UnauthorizedException') {
+        return response.status(error.status).json({
+          message: error.message,
+        })
+      } else {
+        return response.status(404).json({
+          message: 'Thread not found',
+        })
+      }
     }
   }
 
@@ -99,9 +104,7 @@ export default class ThreadsController {
       const user = auth.user
 
       if (user?.id !== thread.userId) {
-        return response.status(401).json({
-          message: 'Unauthorized',
-        })
+        throw new UnauthorizedException('Unauthorized', 403, 'E_UNAUTHORIZED')
       }
 
       await thread.delete()
@@ -109,9 +112,15 @@ export default class ThreadsController {
         message: 'Thread deleted successfully',
       })
     } catch (error) {
-      return response.status(400).json({
-        message: error.message,
-      })
+      if (error.name === 'UnauthorizedException') {
+        return response.status(error.status).json({
+          message: error.message,
+        })
+      } else {
+        return response.status(404).json({
+          message: 'Thread not found',
+        })
+      }
     }
   }
 }
