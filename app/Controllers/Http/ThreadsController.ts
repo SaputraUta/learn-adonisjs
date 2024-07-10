@@ -5,7 +5,7 @@ import ThreadValidator from 'App/Validators/ThreadValidator'
 export default class ThreadsController {
   public async index({ response }: HttpContextContract) {
     try {
-      const threads = await Thread.query().preload('user').preload('category')
+      const threads = await Thread.query().preload('user').preload('category').preload('replies')
       return response.status(201).json({
         data: threads,
       })
@@ -37,6 +37,7 @@ export default class ThreadsController {
         .where('id', params.id)
         .preload('category')
         .preload('user')
+        .preload('replies')
         .firstOrFail()
       return response.status(201).json({
         data: thread,
@@ -48,10 +49,18 @@ export default class ThreadsController {
     }
   }
 
-  public async update({ params, request, response }: HttpContextContract) {
-    const validateData = await request.validate(ThreadValidator)
+  public async update({ params, request, response, auth }: HttpContextContract) {
     try {
       const thread = await Thread.findOrFail(params.id)
+      const user = auth.user
+
+      if (user?.id !== thread.userId) {
+        return response.status(401).json({
+          message: 'Unauthorized',
+        })
+      }
+
+      const validateData = await request.validate(ThreadValidator)
       await thread.merge(validateData).save()
 
       await thread?.load('user')
@@ -67,9 +76,17 @@ export default class ThreadsController {
     }
   }
 
-  public async destroy({ params, response }: HttpContextContract) {
+  public async destroy({ params, response, auth }: HttpContextContract) {
     try {
       const thread = await Thread.findOrFail(params.id)
+      const user = auth.user
+
+      if (user?.id !== thread.userId) {
+        return response.status(401).json({
+          message: 'Unauthorized',
+        })
+      }
+
       await thread.delete()
       return response.status(200).json({
         message: 'Thread deleted successfully',
